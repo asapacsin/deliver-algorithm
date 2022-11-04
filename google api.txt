@@ -1,0 +1,8 @@
+import googlemaps
+
+def create_path(start,end):
+    gmaps = googlemaps.Client(key = 'AIzaSyBh6eU48AhR1wiYNWyGxXKn23N4sIAc6ek')
+    directions_result = gmaps.directions("澳門"+start,"澳門"+end,mode="driving")
+    duration = directions_result[0]['legs'][0]['duration']['value']
+    path = {'start':start,'end':end,'duration':duration}
+    return path

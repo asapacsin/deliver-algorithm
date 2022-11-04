@@ -1,0 +1,18 @@
+gmaps = googlemaps.Client(key='AIzaSyBh6eU48AhR1wiYNWyGxXKn23N4sIAc6ek')
+    start = '中國人民大學'
+    end = '北京師範大學'
+    start_encode = gmaps.geocode(start)
+    end_encode = gmaps.geocode(end)
+    start_coordinate_lat = start_encode[0]['geometry']['location']['lat']
+    start_coordinate_lat = "{:.0f}".format(start_coordinate_lat)
+    start_coordinate_lng = start_encode[0]['geometry']['location']['lng']
+    start_coordinate_lng = "{:.0f}".format(start_coordinate_lng)
+    start_coordinate = '{},{}'.format(start_coordinate_lat, start_coordinate_lng)
+    end_coordinate_lat = end_encode[0]['geometry']['location']['lat']
+    end_coordinate_lat = "{:.0f}".format(end_coordinate_lat)
+    end_coordinate_lng = end_encode[0]['geometry']['location']['lng']
+    end_coordinate_lng = "{:.0f}".format(end_coordinate_lng)
+    end_coordinate = '{},{}'.format(end_coordinate_lat, end_coordinate_lng)
+    print(start_coordinate, end_coordinate)
+    path = get_route(start_coordinate,end_coordinate)
+    print(path)

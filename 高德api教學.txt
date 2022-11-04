@@ -1,0 +1,17 @@
+import pandas as pd
+import requests
+import json
+def get_dis_tm(origin, destination):
+ url = 'https://restapi.amap.com/v3/direction/driving?'
+ key = 'XXXXXXXXXXXXXXX' #这里就是需要
+ link = '{}origin={}&destination={}&key={}'.format(url, origin ,destination , key)
+ response = requests.get(link)
+ dis, tm = 999999, 999999
+ if response.status_code == 200:
+ results = response.json()
+ if results['status'] == '1':
+ dis = int(results['route']['paths'][0]['distance'])
+ tm = int(results['route']['paths'][0]['duration'])
+ else:
+ print(link)
+ return dis, tm

@@ -1,0 +1,167 @@
+import os
+from numpy import true_divide
+import openpyxl
+from datetime import timedelta
+from routing import routing
+
+
+def process_data(dataname):
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    path_to_excel = dir_path + "\\"+dataname
+    excel = openpyxl.load_workbook(path_to_excel,data_only=True,keep_vba=False)
+    sheet = excel.active
+    head = 'A'
+    tail = '1'
+    data_type = []
+    data = []
+    max_column = int(sheet.max_column)
+    for i in range(max_column):
+        index = head + tail
+        value = sheet[index].value
+        data_type.append(value)
+        head = chr(ord(head)+1)
+    max_row = int(sheet.max_row) - 1
+    for i in range(max_row):
+        head = 'A'
+        tail = str(i+2)
+        data.append({})
+        row = data[i]
+        for j in range(max_column):
+              type_name = data_type[j]
+              index = head + tail
+              value = sheet[index].value
+              head = chr(ord(head)+1) 
+              row[type_name] = value
+    return data       
+      
+
+    
+def time_convert(time):
+    time = time.split('~')
+    left = time[0].split(':')
+    left_hour = left[0]
+    left_hour = int(left_hour)
+    left_min = left[1]
+    left_min = int(left_min)
+    right = time[1].split(':')
+    right_hour = right[0]
+    right_min = right[1]
+    right_hour = int(right_hour)
+    right_min = int(right_min)
+    time_arr =[]
+    time_left = timedelta(hours=left_hour,minutes=left_min)
+    time_right = timedelta(hours=right_hour,minutes=right_min)
+    time_arr.append(time_left)
+    time_arr.append(time_right)
+    return time_arr
+
+def convert_sec_time(data):
+    time = timedelta(seconds = data)
+    return time
+
+def find_duration(path_group,start,end):
+    for path in path_group:
+        if path['start']==start and path['end'] == end:
+            return path['duration']
+    print('no duration find')
+
+def create_timeslot(start_time,end_time):
+    timeslot = []
+    tmp_start_time = start_time
+    tmp_end_time = start_time + timedelta(minutes = 30)
+    while tmp_end_time <= end_time:
+        time_interval = {'start':tmp_start_time,'end':tmp_end_time}
+        timeslot.append(time_interval)
+        tmp_start_time += timedelta(minutes = 30)
+        tmp_end_time += timedelta(minutes = 30)
+
+    return timeslot
+
+def get_order_time_interval(order):
+    time = time_convert(order['時間段'])
+    start = time[0]
+    end = time[1]
+    time_interval = {'start':start,'end':end}
+    return time_interval
+
+def ini_drivers(driver_num):
+    drivers = []
+    for i in range(driver_num):
+        driver = {'order':[],'path':[]}
+        drivers.append(driver)
+
+    return drivers
+
+def free_timeslot_for_order(driver_job,order):
+    index = -1
+    judge = True
+    l = len(driver_job['order'])
+    order_time_interval = get_order_time_interval(order)
+    for i in range(l):
+        if driver_job['order'][i]['time_interval'] == order_time_interval:
+            judge = False
+            break
+        elif driver_job['order'][i]['time_interval']['end'] > order_time_interval['end']:
+            index = i-1
+            break
+    return judge,index
+
+def judge_able_to_send(end_location,start,end,reserve_time):
+    path_a = routing.create_path(end_location,start)
+    path_b = routing.create_path(start,end)
+    a_duration = path_a['duration']
+    b_duration = path_b['duration']
+    path_duration = a_duration+b_duration
+    if(path_duration <= reserve_time):
+        return True
+    return False
+
+def allocate_job(order_group,drivers_job):
+    total_orders = 3
+    total_drivers = len(drivers_job)
+    unable_to_deliver = []
+    for i in range(total_orders):  #load for every orders
+        cur_driver = 0
+        order = order_group[i]
+        while cur_driver < total_drivers:  #see if driver is available
+            driver_job = drivers_job[cur_driver]
+            time_interval = get_order_time_interval(order)  #get the time interval of order
+            if len(driver_job['order']) == 0:                #driver not holding order 
+                mission = {'time_interval':time_interval,'order':order,'end_location':order['送到']}
+                driver_job['order'].append(mission)
+                break
+            else:
+                judge,index = free_timeslot_for_order(driver_job,order)
+                if judge == True:  #free timeslot for driver
+                    end_location = driver_job['order'][-1]['end_location']
+                    start = order['哪裡取']
+                    end = order['送到']
+                    new_end_time = time_interval['end']
+                    old_end_time = driver_job['order'][index]['time_interval']['end']
+                    reserve_time = new_end_time - old_end_time
+                    able_send = judge_able_to_send(end_location,start,end,reserve_time)
+                    if able_send == True:
+                        mission = {'time_interval':time_interval,'order':order,'end_location':order['送到']}
+                        path = {'start':order['start'],'end':order['end'],'duration':}
+                        driver_job['order'].insert(index,mission)
+                        break
+                    else:
+                        cur_driver += 1
+                else:     #no free timeslot for driver
+                    cur_driver += 1
+        if cur_driver == total_drivers:
+           unable_to_deliver.append(order)
+    return unable_to_deliver
+
+def main():
+    order_group = process_data('data.xlsx')
+    drivers_num = 3
+    drivers_job = ini_drivers(drivers_num)
+    unable_to_deliver = allocate_job(order_group,drivers_job)    
+    print(drivers_job)
+    for i in range(drivers_num):
+        driver_job = drivers_job[i]
+        print('driver'+str(i+1)+' has '+str(len(driver_job['order']))+' jobs')
+    print('unable to deliver jobs are '+str(len(unable_to_deliver)))
+    
+main()
